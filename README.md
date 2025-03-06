@@ -23,7 +23,7 @@
 
 ### 本地使用
 
-1. 下载 `index.html` 文件到本地
+1. 下载 `onenote-to-markdown.html` 文件到本地
 2. 在任意浏览器中直接打开此文件
 3. 粘贴 OneNote 内容，点击"转换为 Markdown"按钮
 
