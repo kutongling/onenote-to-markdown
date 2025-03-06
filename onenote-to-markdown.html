@@ -1,0 +1,453 @@
+<!--
+  OneNote转Markdown工具
+  
+  版权所有 (c) 2023-2025 kutongling
+  
+  此代码根据MIT许可证发布：
+  https://opensource.org/licenses/MIT
+-->
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneNote笔记转Markdown工具</title>
+  <style>
+    :root {
+      --primary: #007bff;
+      --primary-dark: #0056b3;
+      --success: #28a745;
+      --danger: #dc3545;
+      --info: #17a2b8;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --border: #dee2e6;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+    
+    .ontmd-tool {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      padding: 20px;
+      margin: 20px 0;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: var(--dark);
+    }
+    
+    .ontmd-options {
+      margin-bottom: 20px;
+      padding: 10px 15px;
+      background: var(--light);
+      border-radius: 5px;
+      border: 1px solid var(--border);
+    }
+    
+    .ontmd-option {
+      margin-right: 20px;
+      display: inline-block;
+    }
+    
+    .ontmd-converter {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .ontmd-column {
+      flex: 1;
+      min-width: 300px;
+    }
+    
+    .ontmd-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .ontmd-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+    
+    .textarea {
+      width: 100%;
+      height: 350px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: Consolas, Monaco, monospace;
+      line-height: 1.5;
+      resize: vertical;
+    }
+    
+    .output-textarea {
+      background-color: var(--light);
+    }
+    
+    .ontmd-btn {
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .ontmd-btn:hover {
+      opacity: 0.9;
+    }
+    
+    .ontmd-btn-primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+    }
+    
+    .ontmd-btn-outline {
+      background: transparent;
+      border: 1px solid;
+    }
+    
+    .ontmd-btn-success {
+      color: var(--success);
+      border-color: var(--success);
+    }
+    
+    .ontmd-btn-secondary {
+      color: var(--dark);
+      border-color: var(--dark);
+    }
+    
+    .ontmd-btn-info {
+      color: var(--info);
+      border-color: var(--info);
+    }
+    
+    .ontmd-status {
+      display: none;
+      margin: 15px 0;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    
+    .ontmd-status-success {
+      background-color: rgba(40, 167, 69, 0.1);
+      color: var(--success);
+    }
+    
+    .ontmd-status-error {
+      background-color: rgba(220, 53, 69, 0.1);
+      color: var(--danger);
+    }
+    
+    .ontmd-status-info {
+      background-color: rgba(23, 162, 184, 0.1);
+      color: var(--info);
+    }
+    
+    .ontmd-actions {
+      text-align: center;
+      margin: 15px 0;
+    }
+    
+    .ontmd-convert-btn {
+      padding: 10px 25px;
+      font-size: 1.1rem;
+    }
+    
+    .ontmd-footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+    
+    @media (max-width: 768px) {
+      .ontmd-converter {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="ontmd-tool" id="ontmd-tool">
+      <h1>OneNote笔记转Markdown工具</h1>
+      
+      <div class="ontmd-options">
+        <label class="ontmd-option">
+          <input type="checkbox" id="ontmd-opt-headings" checked> 
+          保留中文编号标题
+        </label>
+        <label class="ontmd-option">
+          <input type="checkbox" id="ontmd-opt-nesting" checked> 
+          保留缩进层次
+        </label>
+        <label class="ontmd-option">
+          <input type="checkbox" id="ontmd-opt-clean" checked> 
+          清理空行
+        </label>
+      </div>
+      
+      <div class="ontmd-converter">
+        <div class="ontmd-column">
+          <div class="ontmd-header">
+            <div class="ontmd-title">OneNote原文</div>
+            <div>
+              <button id="ontmd-example-btn" class="ontmd-btn ontmd-btn-outline ontmd-btn-info">示例</button>
+              <button id="ontmd-clear-btn" class="ontmd-btn ontmd-btn-outline ontmd-btn-secondary">清空</button>
+            </div>
+          </div>
+          <textarea id="ontmd-input" class="textarea" placeholder="粘贴您的OneNote文本到这里...&#10;（保留原始缩进格式）"></textarea>
+        </div>
+        
+        <div class="ontmd-column">
+          <div class="ontmd-header">
+            <div class="ontmd-title">Markdown结果</div>
+            <button id="ontmd-copy-btn" class="ontmd-btn ontmd-btn-outline ontmd-btn-success">复制</button>
+          </div>
+          <textarea id="ontmd-output" class="textarea output-textarea" readonly placeholder="转换后的Markdown将显示在这里..."></textarea>
+        </div>
+      </div>
+      
+      <div id="ontmd-status" class="ontmd-status"></div>
+      
+      <div class="ontmd-actions">
+        <button id="ontmd-convert-btn" class="ontmd-btn ontmd-btn-primary ontmd-convert-btn">转换为Markdown</button>
+      </div>
+      
+      <div class="ontmd-footer">
+        <p>© 2023-2025 <a href="https://github.com/kutongling" target="_blank">kutongling</a> - 根据 MIT 许可证开源</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 延迟初始化，避免可能的加载问题
+      setTimeout(function() {
+        initOneNoteTool();
+      }, 100);
+    });
+
+    // 初始化工具
+    function initOneNoteTool() {
+      // 示例文本
+      var exampleText = '一、"模糊"中探索：一条遥远的改编"渐近线"\n\t\t新中国成立初期，"文华""昆仑"两大私营电影公司，积极接身到讴歌新时代的创作中。\n\t\t\t1951年《武训传》批判运动\n\t\t\t1956年夏衍根据鲁迅小说改编的电影《祝福》\n二、主流叙事话语的建立：革命战争与革命历史题材的改编\n\t革命题材电影的特征\n\t\t1.注重对于"英雄人物"的塑造，"崭新的"人物形象手法\n\t\t\t（1）身份改写\n\t\t\t（2）挪移嫁接';
+
+      // 获取所有UI元素
+      var tool = document.getElementById('ontmd-tool');
+      var inputArea = document.getElementById('ontmd-input');
+      var outputArea = document.getElementById('ontmd-output');
+      var convertBtn = document.getElementById('ontmd-convert-btn');
+      var clearBtn = document.getElementById('ontmd-clear-btn');
+      var exampleBtn = document.getElementById('ontmd-example-btn');
+      var copyBtn = document.getElementById('ontmd-copy-btn');
+      var statusEl = document.getElementById('ontmd-status');
+      
+      // 确保所有元素都存在
+      if (!tool || !inputArea || !outputArea || !convertBtn || !clearBtn || 
+          !exampleBtn || !copyBtn || !statusEl) {
+        console.error('无法找到工具的必要元素');
+        return;
+      }
+      
+      // 转换按钮事件处理
+      if (convertBtn) {
+        convertBtn.onclick = function(e) {
+          try {
+            if (!inputArea.value.trim()) {
+              showStatusMessage('请输入OneNote文本进行转换', 'error');
+              return;
+            }
+            
+            var result = processConversion(inputArea.value);
+            outputArea.value = result;
+            showStatusMessage('转换成功！', 'success');
+          } catch (err) {
+            console.error('转换错误:', err);
+            showStatusMessage('转换失败: ' + (err.message || '未知错误'), 'error');
+          }
+        };
+      }
+      
+      // 清空按钮事件处理
+      if (clearBtn) {
+        clearBtn.onclick = function(e) {
+          inputArea.value = '';
+          inputArea.focus();
+        };
+      }
+      
+      // 示例按钮事件处理
+      if (exampleBtn) {
+        exampleBtn.onclick = function(e) {
+          inputArea.value = exampleText;
+          showStatusMessage('已加载示例', 'info');
+        };
+      }
+      
+      // 复制按钮事件处理
+      if (copyBtn) {
+        copyBtn.onclick = function(e) {
+          if (!outputArea.value) {
+            showStatusMessage('没有内容可复制', 'error');
+            return;
+          }
+          
+          outputArea.select();
+          try {
+            document.execCommand('copy');
+            showStatusMessage('已复制到剪贴板！', 'success');
+          } catch (err) {
+            showStatusMessage('复制失败，请手动复制', 'error');
+          }
+        };
+      }
+      
+      // 显示状态消息
+      function showStatusMessage(message, type) {
+        statusEl.textContent = message;
+        statusEl.style.display = 'block';
+        
+        // 移除所有状态类
+        statusEl.className = 'ontmd-status';
+        
+        // 添加特定状态类
+        if (type === 'success') {
+          statusEl.classList.add('ontmd-status-success');
+        } else if (type === 'error') {
+          statusEl.classList.add('ontmd-status-error');
+        } else {
+          statusEl.classList.add('ontmd-status-info');
+        }
+        
+        setTimeout(function() {
+          statusEl.style.display = 'none';
+        }, 3000);
+      }
+      
+      // 核心转换处理 - 避免使用&&运算符
+      function processConversion(text) {
+        var preserveHeadings = document.getElementById('ontmd-opt-headings').checked;
+        var preserveNesting = document.getElementById('ontmd-opt-nesting').checked;
+        var cleanText = document.getElementById('ontmd-opt-clean').checked;
+        
+        // 分割行
+        var lines = text.split('\n');
+        
+        // 清理空行
+        if (cleanText) {
+          var cleanedLines = [];
+          for (var j = 0; j < lines.length; j++) {
+            if (lines[j].trim().length > 0) {
+              cleanedLines.push(lines[j]);
+            }
+          }
+          lines = cleanedLines;
+        }
+        
+        var result = '';
+        var lastIndentLevel = -1;
+        
+        // 处理每一行
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i];
+          var cleanedLine = line;
+          
+          // 计算缩进级别
+          var indentLevel = 0;
+          if (preserveNesting) {
+            // 使用Tab计算缩进
+            var tabMatch = line.match(/^(\t+)/);
+            if (tabMatch) {
+              indentLevel = tabMatch[1].length;
+              cleanedLine = line.replace(/^\t+/, '');
+            } else {
+              // 使用空格计算缩进
+              var spaceMatch = line.match(/^( +)/);
+              if (spaceMatch) {
+                indentLevel = Math.floor(spaceMatch[1].length / 4);
+                cleanedLine = line.replace(/^ +/, '');
+              }
+            }
+          }
+          
+          // 检查是否是中文编号标题行
+          var isChineseHeading = /^[一二三四五六七八九十]+、/.test(cleanedLine.trim());
+          
+          // 处理标题行 - 避免使用&&
+          var isHeading = false;
+          if (isChineseHeading) {
+            if (preserveHeadings) {
+              isHeading = true;
+            }
+          }
+          
+          if (isHeading) {
+            // 添加空行，除非是第一行
+            if (i > 0) {
+              result += '\n';
+            }
+            
+            // 添加Markdown标题格式
+            result += '## ' + cleanedLine.trim() + '\n';
+            lastIndentLevel = -1; // 重置缩进级别
+          } else {
+            // 处理普通内容行
+            if (preserveNesting) {
+              // 如果缩进级别变小，添加空行以保持清晰的结构
+              var needEmptyLine = false;
+              if (i > 0) {
+                if (indentLevel < lastIndentLevel) {
+                  needEmptyLine = true;
+                }
+              }
+              
+              if (needEmptyLine) {
+                result += '\n';
+              }
+              
+              // 根据缩进级别添加Markdown列表符号
+              var indent = '';
+              for (var k = 0; k < indentLevel; k++) {
+                indent += '  ';
+              }
+              result += indent + '- ' + cleanedLine.trim() + '\n';
+              lastIndentLevel = indentLevel;
+            } else {
+              // 不保留缩进，所有行都视为同一级别
+              result += '- ' + cleanedLine.trim() + '\n';
+            }
+          }
+        }
+        
+        return result.trim();
+      }
+      
+      // 完成初始化
+      console.log('OneNote转Markdown工具已初始化');
+    }
+  </script>
+</body>
+</html>
